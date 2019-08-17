@@ -1,0 +1,197 @@
+<script src="/js/web3.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+
+<p>Current count: <span id="key">??</span></p>
+key:
+<input id="_key" type="number">
+<button id="getkey">Get current key</button>
+<button id="getvalue">Get value</button><br />
+value
+<input id="_value" type="text">
+<button id="createvalue">Create value</button>
+<div id="log"></div>
+
+<script>
+  detectWeb3 = () => {
+    if(typeof window.web3 !== "undefined" ){ // load metamask's provider
+        const w3 = window.web3;
+
+        // Calling method to retrieve accounts. Method available since Web3 v1.x.x-beta
+        w3.eth.getAccounts().then( r => {
+            if (r.length > 0) { 
+                // some addresses found.
+            } else {
+                // No address found
+            }
+        }).catch(e => { // Error catched if method doesn't exist
+            const accounts = w3.eth.accounts; // We'll try to get accounts from previous versions ( up to Web3 v0.20.x)
+            if (accounts.length > 0) {
+                // some addresses found 
+            } else {
+                // No address found
+            }
+        });
+    }else{ 
+
+        // Instructions to execute if no Web3 instance has been detected.  
+
+    }
+  }
+
+  //setInterval(detectWeb3,1000);
+
+  function log(message) {
+    $('#log').append($('<p>').text(message));
+    $('#log').scrollTop($('#log').prop('scrollHeight'));
+  }
+
+  function error(message) {
+    $('#log').append($('<p>').addClass('dark-red').text(message));
+    $('#log').scrollTop($('#log').prop('scrollHeight'));
+  }
+
+  function waitForReceipt(hash, cb) {
+    web3.eth.getTransactionReceipt(hash, function (err, receipt) {
+      if (err) {
+        error(err);
+      }
+
+      if (receipt !== null) {
+        // Transaction went through
+        if (cb) {
+          cb(receipt);
+        }
+      } else {
+        // Try again in 1 second
+        window.setTimeout(function () {
+          waitForReceipt(hash, cb);
+        }, 1000);
+      }
+    });
+  }
+
+  var address = "0x5d3abb59052632Fae32d55B80B6d58abF1A74eb5";
+  var abi = [{
+    "constant": true,
+    "inputs": [],
+    "name": "getKey",
+    "outputs": [{
+      "name": "",
+      "type": "int256"
+    }],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  }, {
+    "constant": false,
+    "inputs": [{
+      "name": "value",
+      "type": "string"
+    }],
+    "name": "createValue",
+    "outputs": [{
+      "name": "",
+      "type": "int256"
+    }],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }, {
+    "constant": true,
+    "inputs": [{
+      "name": "_key",
+      "type": "int256"
+    }],
+    "name": "getValue",
+    "outputs": [{
+      "name": "_val",
+      "type": "string"
+    }],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  }];
+
+  $(function () {
+    var storestr;
+
+    $('#getkey').click(function (e) {
+      e.preventDefault();
+      web3.eth.getAccounts((err, res) => {                   
+                   console.log(res[0]);
+                   console.log(err);
+      });
+      log("Calling getKey...");
+
+      storestr.getKey.call(function (err, result) {
+        if (err) {
+          return error(err);
+        } else {
+          log("getKey call executed successfully.");
+        }
+
+        // The return value is a BigNumber object
+        $('#key').text(result.toString());
+      });
+    });
+
+    $('#getvalue').click(function (e) {
+      console.log("getvalue");
+      e.preventDefault();
+      console.log(web3);
+      console.log(web3.eth);
+      console.log(web3.eth.getAccounts());
+      console.log(web3.eth.defaultAccount);
+      if (web3.eth.defaultAccount === undefined) {
+        return error("No accounts found. If you're using MetaMask, " +
+          "please unlock it first and reload the page.");
+      }
+
+      log("Calling getValue...");
+      let key = parseInt($('#_key').val());
+      console.log(key);
+      storestr.getValue.call(key, function (err, result) {
+        log(err);
+        log(result);
+      });
+    });
+
+    $('#createvalue').click(function (e) {
+      e.preventDefault();
+
+      if (web3.eth.defaultAccount === undefined) {
+        return error("No accounts found. If you're using MetaMask, " +
+          "please unlock it first and reload the page.");
+      }
+
+      log("Calling createvalue...");
+
+      storestr.createValue.sendTransaction($('#_value').val(), function (err, hash) {
+        if (err) {
+          return error(err);
+        }
+        console.log(hash);
+        waitForReceipt(hash, function () {
+          log("Transaction succeeded. " +
+            "Call getCount again to see the latest count.");
+        });
+      });
+    });
+
+    if (typeof (web3) === "undefined") {
+      error("Unable to find web3. " +
+        "Please run MetaMask (or something else that injects web3).");
+    } else {
+      log("Found injected web3.");
+      web3 = new Web3(web3.currentProvider);
+      if (web3.version.network != 3) {
+        error("Wrong network detected. Please switch to the Ropsten test network.");
+      } else {
+        log("Connected to the Ropsten test network.");
+        storestr = web3.eth.contract(abi).at(address);
+        console.log(storestr);
+        $('#getcount').click();
+      }
+    }
+  });
+</script>

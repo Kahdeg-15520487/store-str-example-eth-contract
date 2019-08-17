@@ -1,1 +1,1 @@
-"# store-str-example-eth-contract" 
+# store-str-example-eth-contract
